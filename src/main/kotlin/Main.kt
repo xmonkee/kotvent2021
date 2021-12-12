@@ -1,5 +1,6 @@
 import java.math.BigInteger
 import java.util.*
+import kotlin.collections.HashMap
 import kotlin.math.*
 
 fun main(args: Array<String>) {
@@ -13,7 +14,8 @@ fun main(args: Array<String>) {
 //    day8()
 //    day9()
 //    day10()
-    day11()
+//    day11()
+    day12()
 }
 
 val day1 = sequence<Int> {
@@ -207,6 +209,20 @@ fun day8() {
         "abcdefg" to 8,
         "abcdfg" to 9,
     )
+
+    fun <R> permutations(l: List<R>): List<List<R>> {
+        if (l.size == 0) return emptyList()
+        if (l.size == 1) return listOf(l)
+        val first = l[0]
+        val rest = l.drop(1)
+        val res = mutableListOf<List<R>>()
+        for (p in permutations((rest))) {
+            for (i in 0..p.size) {
+                res.add(p.take(i) + first + p.drop(i))
+            }
+        }
+        return res.toList()
+    }
 
     fun decode(signals: List<String>): String {
         val orig = "abcdefg".toList()
@@ -450,18 +466,69 @@ fun day11() {
     println(steps)
 }
 
-fun <R> permutations(l: List<R>): List<List<R>> {
-    if (l.size == 0) return emptyList()
-    if (l.size == 1) return listOf(l)
-    val first = l[0]
-    val rest = l.drop(1)
-    val res = mutableListOf<List<R>>()
-    for (p in permutations((rest))) {
-        for (i in 0..p.size) {
-            res.add(p.take(i) + first + p.drop(i))
+fun day12 () {
+    val inp = Utils.getListInput(12)
+//    val inp = """start-A
+//start-b
+//A-c
+//A-b
+//b-d
+//A-end
+//b-end""".split("\n")
+    val graph = mutableMapOf<String, MutableSet<String>>()
+    inp.forEach{line->
+        val (left, right) = line.split("-")
+        if (!graph.contains(left)) graph[left] = mutableSetOf()
+        if (!graph.contains(right)) graph[right] = mutableSetOf()
+        graph[left]!!.add(right)
+        graph[right]!!.add(left)
+    }
+    val paths = mutableListOf<List<String>>()
+
+    fun isBig(s: String): Boolean {
+        return s.uppercase() == s
+    }
+
+    fun makePaths(pathSoFar: List<String>) {
+        val curr = pathSoFar.last()
+        if (curr == "end") {
+            paths.add(pathSoFar)
+            return
+        }
+        for (n in graph[curr]!!) {
+            if (isBig(n) || !pathSoFar.contains(n)) {
+                makePaths(pathSoFar+n)
+            }
         }
     }
-    return res.toList()
+
+    makePaths(listOf("start"))
+//    println (paths.map{it.joinToString(",")}.joinToString("\n"))
+    println(paths.size)
+
+    // Part 2
+    val paths2 = mutableListOf<List<String>>()
+    fun makePaths2(pathSoFar: List<String>) {
+        val curr = pathSoFar.last()
+        if (curr == "end") {
+            paths2.add(pathSoFar)
+            return
+        }
+        for (n in graph[curr]!!) {
+            if (isBig(n) || !pathSoFar.contains(n)) {
+                makePaths2(pathSoFar+n)
+            }
+            else if (n != "start" && !pathSoFar.contains("__dbl__")) {
+                makePaths2((pathSoFar + "__dbl__") + n)
+            }
+        }
+    }
+    makePaths2(listOf("start"))
+//    println (paths2.map{it.joinToString(",")}.joinToString("\n"))
+    println(paths2.toSet().size)
+
 }
+
+
 typealias Line = List<Int>
 typealias Board = List<List<Int>>
