@@ -1,6 +1,6 @@
 import java.math.BigInteger
 import java.util.*
-import kotlin.collections.HashMap
+import kotlin.collections.ArrayList
 import kotlin.math.*
 
 fun main(args: Array<String>) {
@@ -16,7 +16,10 @@ fun main(args: Array<String>) {
 //    day10()
 //    day11()
 //    day12()
-    day13()
+//    day13()
+//    day14()
+//    day15()
+    day16()
 }
 
 val day1 = sequence<Int> {
@@ -248,8 +251,8 @@ fun day8() {
 
     var s = 0
     for ((signals, code) in inpp) {
-       val permutation = decode(signals.split(" "))
-       val code = code.split(" ").map { encode(it, permutation) }.joinToString("").toInt()
+        val permutation = decode(signals.split(" "))
+        val code = code.split(" ").map { encode(it, permutation) }.joinToString("").toInt()
         s += code
     }
     println(s)
@@ -288,11 +291,11 @@ fun day9() {
     fun getNeighbors(loc: Pair<Int, Int>): Sequence<Pair<Int, Int>> {
         val (i, j) = loc
         return sequence {
-           if (i > 0) yield(Pair(i - 1, j))
+            if (i > 0) yield(Pair(i - 1, j))
             if (i < I) yield(Pair(i + 1, j))
             if (j > 0) yield(Pair(i, j - 1))
             if (j < J) yield(Pair(i, j + 1))
-       }
+        }
     }
 
     val basins = locs.map { loc ->
@@ -379,8 +382,8 @@ fun day10() {
         }
         var score: BigInteger = BigInteger.ZERO
         while (stack.size > 0) {
-           val t = stack.pop()
-           score *= BigInteger.valueOf(5)
+            val t = stack.pop()
+            score *= BigInteger.valueOf(5)
             score += when(t) {
                 '(' -> BigInteger.ONE
                 '[' -> BigInteger.TWO
@@ -410,7 +413,7 @@ fun day11() {
 //6882881134
 //4846848554
 //5283751526""".split("\n")
-   val inpp = inp.map{row -> row.map{c -> c.digitToInt()}.toMutableList()}
+    val inpp = inp.map{row -> row.map{c -> c.digitToInt()}.toMutableList()}
 
     val H = inpp.size
     val W = inpp[0].size
@@ -611,6 +614,200 @@ fun day13() {
 
 }
 
+fun day14() {
+    val inp = Utils.getRawInput(14)
+//    val inp = """NNCB
+//
+//CH -> B
+//HH -> N
+//CB -> H
+//NH -> C
+//HB -> C
+//HC -> B
+//HN -> C
+//NN -> C
+//BH -> H
+//NC -> B
+//NB -> B
+//BN -> B
+//BB -> N
+//BC -> B
+//CC -> N
+//CN -> C"""
+
+    val (temp, _instrs) = inp.split("\n\n")
+    val rules = _instrs.split("\n").filter { it.isNotEmpty() }.map{
+        val (left, right) = it.split(" -> ")
+        left to right.first()
+    }.toMap()
+
+    val pairs = temp.windowed(2)
+//    var pairCounts = pairs.toSet().associateWith { p -> pairs.count { it == p }.toLong() }.toMutableMap().withDefault { 0 }
+
+    var pairCounts: Map<String, Long> = counter(pairs)
+    val charCounts = counter<Char, Long>(temp.toList()).toMutableMap()
+
+    for (x in 1..40) {
+        var newPairCount = mutableMapOf<String, Long>().withDefault { 0 }
+        for ((pair, pairCount) in pairCounts.filter { (_, v) -> v > 0 }) {
+            val newChar = rules[pair]!!
+            val firstNewPair = pair.first().toString() + rules[pair]!!
+            val secondNewPair = rules[pair]!!.toString() + pair.last()
+            newPairCount[firstNewPair] = newPairCount.getValue(firstNewPair) + pairCount
+            newPairCount[secondNewPair] = newPairCount.getValue(secondNewPair) + pairCount
+            charCounts[newChar] = (charCounts[newChar] ?: 0) + pairCount
+        }
+        pairCounts = newPairCount
+        if (x == 10) println(charCounts.values.maxOrNull()!! - charCounts.values.minOrNull()!!) //part 1
+    }
+    // part 2
+    println(charCounts.values.maxOrNull()!! - charCounts.values.minOrNull()!!)
+}
+
+fun day15() {
+    val inp = Utils.getListInput(15).map{it.toList().map{it.digitToInt()}}
+//    val inp = """1163751742
+//1381373672
+//2136511328
+//3694931569
+//7463417111
+//1319128137
+//1359912421
+//3125421639
+//1293138521
+//2311944581""".split("\n").map{it.toList().map{it.digitToInt()}}
+
+    fun solve(multiplier: Int) {
+
+        fun getInp(i: Int, j: Int): Int {
+            val I = inp.size
+            val J = inp[0].size
+            val _i = i % I
+            val _j = j % J
+            val orig = inp[_i][_j]
+            val d = (i / I) + (j / J)
+            var it = (orig + d)
+            while (it > 9) it -= 9
+            return it
+        }
+        val I = inp.size * multiplier
+        val J = inp[0].size * multiplier
+        val Inp = Array(I) {i -> Array<Int>(J) {j -> getInp(i, j)} }
+        val scores = Array(I) { Array<Int>(J) {Int.MAX_VALUE} }
+        scores[0][0] = 0
+        repeat(10) {
+            val curr = scores[I-1][J-1]
+            for(i in 0 until I) {
+                for (j in 0 until J) {
+                    if (i == 0 && j == 0) continue
+                    val s1 = if (i > 0) scores[i-1][j] else Int.MAX_VALUE
+                    val s2 = if (j > 0) scores[i][j-1] else Int.MAX_VALUE
+                    val s3 = if (i < I - 1) scores[i+1][j] else Int.MAX_VALUE
+                    val s4 = if (j < J - 1) scores[i][j+1] else Int.MAX_VALUE
+                    val min = listOf(s1, s2, s3, s4).minOrNull()!!
+                    scores[i][j] = min + Inp[i][j]
+//                val minIdx = listOf(s1, s2, s3, s4).indexOf(min)
+                }
+            }
+            println(scores.last().last())
+        }
+//    println(Inp.map{it.joinToString(""){it.toString().padStart(1)} }.joinToString ("\n") + "\n")
+//    println(scores.map{it.joinToString(" "){it.toString().padStart(2)} }.joinToString ("\n") + "\n")
+        println(scores.last().last())
+    }
+//    solve(1) // part 1
+    solve(5) // part 2
+}
+
+fun day16() {
+    val inp = Utils.getRawInput(16).trim()
+    fun hex2bin(h: String): String {
+        return h.map{it.toString().toLong(16).toString(2).padStart(4, '0')}.joinToString("")
+    }
+    assert(hex2bin("D2FE28") == "110100101111111000101000")
+
+    data class Packet(
+        val start: Int,
+        val end: Int,
+        val ver: Long,
+        val tid: Long,
+        val value: Long,
+        val children: List<Packet>?,
+        val totVer: Long
+    )
+
+    fun calcValue(tid: Long, children: List<Packet>): Long = when (tid.toInt()) {
+        0 -> children.sumOf {it.value}
+        1 -> children.fold(1L) {a, b -> a * b.value}
+        2 -> children.minOf { it.value }
+        3 -> children.maxOf { it.value }
+        5 -> if (children[0].value > children[1].value) 1 else 0
+        6 -> if (children[0].value < children[1].value) 1 else 0
+        7 -> if (children[0].value == children[1].value) 1 else 0
+        else -> throw IllegalArgumentException(tid.toString())
+    }
+    fun parse(pkt: String, start: Int): Packet {
+        var curr = start
+        val ver = pkt.slice(curr until curr+3).toLong(2)
+        curr += 3
+        var totVer = ver
+        val tid = pkt.slice(curr until curr+3).toLong(2)
+        curr += 3
+        if (tid == 4.toLong()) {
+            var isLast = false
+            var value = ""
+            do {
+                val byte = pkt.slice(curr until curr + 5)
+                curr += 5
+                value += byte.drop(1)
+                isLast = byte.take(1) == "0"
+            } while (!isLast)
+            return Packet(start, curr, ver, tid, value.toLong(2), null, totVer)
+        } else {
+            val ltid = pkt[curr]
+            curr++
+            if (ltid == '0') {
+                var len = pkt.slice(curr until curr+15).toLong(2)
+                curr += 15
+                val children: ArrayList<Packet> = ArrayList()
+                while (len > 0) {
+                    val child = parse(pkt, curr)
+                    len -= (child.end - child.start)
+                    curr = child.end
+                    children.add(child)
+                    totVer += child.totVer
+                }
+                return Packet(start, curr, ver, tid, calcValue(tid, children), children, totVer)
+            } else {
+                var num = pkt.slice(curr until curr+11).toLong(2)
+                curr += 11
+                val children: ArrayList<Packet> = ArrayList()
+                while (num > 0) {
+                    val child = parse(pkt, curr)
+                    num -= 1
+                    curr = child.end
+                    children.add(child)
+                    totVer += child.totVer
+                }
+                return Packet(start, curr, ver, tid, calcValue(tid, children), children, totVer)
+            }
+        }
+    }
+//    println(parse(hex2bin("D2FE28"), 0))
+//    println(parse(hex2bin("38006F45291200"), 0))
+//    println(parse(hex2bin("EE00D40C823060"), 0))
+//    println(parse(hex2bin("A0016C880162017C3686B18A3D4780"), 0))
+      println(parse(hex2bin(inp), 0))
+}
+
+inline fun <K, reified V: Number> counter(c: Iterable<K>): Map<K, V> {
+    if (1 is V) {
+        return c.map {k -> k to c.count {it == k}}.toMap() as Map<K, V>
+    } else if (1.toLong() is V) {
+        return c.map {k -> k to c.count {it == k}.toLong()}.toMap() as Map<K, V>
+    }
+    else throw UnsupportedOperationException()
+}
 
 typealias Line = List<Int>
 typealias Board = List<List<Int>>
