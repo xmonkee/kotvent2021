@@ -37,6 +37,17 @@ inline fun <K, reified V: Number> counter(c: Iterable<K>): Map<K, V> {
     else throw UnsupportedOperationException()
 }
 
+fun <T> List<T>.cross(other: List<T>): List<Pair<T, T>> {
+    val self = this
+    return sequence<Pair<T, T>> {
+        for (el in self) {
+            for (le in other) {
+                yield(el to le)
+            }
+        }
+    }.toList()
+}
+
 val day1 = sequence<Int> {
     val inp = Utils.getNumInput(1)
     yield(inp.windowed(2).sumOf { (x, y) -> if (y > x) 1 as Int else 0 })
@@ -812,7 +823,7 @@ fun day16() {
 //    println(parse(hex2bin("38006F45291200"), 0))
 //    println(parse(hex2bin("EE00D40C823060"), 0))
 //    println(parse(hex2bin("A0016C880162017C3686B18A3D4780"), 0))
-      println(parse(hex2bin(inp), 0))
+    println(parse(hex2bin(inp), 0))
 }
 
 fun day17() {
@@ -903,51 +914,24 @@ fun day17() {
 fun day18() {
 
     fun parse(s: String, p: Int): Pair<SN, Int> {
-       if(s[p].isDigit()) return SNI(s[p].digitToInt()) to p+1
+        if(s[p].isDigit()) return SNI(s[p].digitToInt()) to p+1
         else if (s[p] == '[') {
-           val (left, pl) = parse(s, p+1)
-           assert(s[pl] == ',')
-           val (right, pr) = parse(s, pl+1)
-           assert(s[pr] == ']')
-           return SNP(left, right) to pr + 1
-       } else {
-           throw InvalidAlgorithmParameterException()
-       }
+            val (left, pl) = parse(s, p+1)
+            assert(s[pl] == ',')
+            val (right, pr) = parse(s, pl+1)
+            assert(s[pr] == ']')
+            return SNP(left, right) to pr + 1
+        } else {
+            throw InvalidAlgorithmParameterException()
+        }
     }
     fun parse(s: String): SNP =  parse(s, 0).first as SNP
 
-//    println(parse("[[[[[9,8],1],2],3],4]").explode().first)
-//    println(parse("[7,[6,[5,[4,[3,2]]]]]").explode().first)
-//    println(parse("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]").explode().first)
-//    println(parse("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]").explode().first)
-
-    fun addUp(s: String) {
-        val t = s.trimIndent().split("\n").map(::parse)
-        var acc = t[0]
-//        println("  $acc ${acc.sum()}")
-        for (snp in t.drop(1)) {
-//            println("+ $snp ${snp.sum()}")
-            acc += snp
-        }
-        println(acc.magnitude())
-    }
-    addUp(Utils.getRawInput(18).trim())
+    val inp = Utils.getRawInput(18).trim().split("\n").map(::parse)
+    // part 1
+    println(inp.reduce(SN::plus).magnitude())
 
     // part 2
-    fun getMaxMagnitude(s: String) {
-        val inps = s.split("\n").map(::parse)
-        val len = inps.size
-        var maxMag = 0
-        for(i in 0 until (len-1)) {
-            for(j in (i+1) until len) {
-                val s1 = (inps[i] + inps[j]).magnitude()
-                val s2 = (inps[j] + inps[i]).magnitude()
-                if (s1 > maxMag) { maxMag = s1 }
-                if (s2 > maxMag) { maxMag = s2 }
-            }
-        }
-        println(maxMag)
-    }
-    getMaxMagnitude(Utils.getRawInput(18).trim())
-
+    println(inp.cross(inp).filter{(x, y) -> x != y}.maxOf{(x, y) -> (x + y).magnitude()})
 }
+

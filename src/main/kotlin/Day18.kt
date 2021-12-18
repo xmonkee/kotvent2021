@@ -5,12 +5,10 @@ abstract class SN { // SnailFishNumber
     abstract fun addToLeftMost(value: Int): SN
     abstract fun addToRightMost(value: Int): SN
     abstract fun split(): Pair<SN, Boolean>
-    abstract fun explode(): Pair<SN, Boolean>
-    abstract fun _explode(depth: Int): Pair<SN, Parts?>
+    abstract fun explode(depth: Int): Pair<SN, Parts?>
     abstract fun reduce(): SN
     abstract operator fun plus(other: SN): SN
     abstract fun magnitude(): Int
-    abstract fun toStringWithDepth(n: Int): String
 }
 
 data class SNI(val value: Int): SN() { // SN that holds an Int only
@@ -28,11 +26,7 @@ data class SNI(val value: Int): SN() { // SN that holds an Int only
         return SNP(SNI(left), SNI(right)) to true
     }
 
-    override fun explode(): Pair<SN, Boolean> {
-        return this to false
-    }
-
-    override fun _explode(depth: Int): Pair<SN, Parts?> {
+    override fun explode(depth: Int): Pair<SN, Parts?> {
         return this to null
     }
 
@@ -48,20 +42,14 @@ data class SNI(val value: Int): SN() { // SN that holds an Int only
         return this.value
     }
 
-    override fun toStringWithDepth(n: Int): String = this.value.toString()
-
 }
 
 data class Parts(val left: Int, val right: Int)
 
-fun toSubscript(n: Int) = if(n >= 5) Character.toChars('₀'.code + n)[0] else ""
-
 data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
     override fun toString(): String = "[${this.left.toString()}, ${this.right.toString()}]"
-//    override fun toString(): String = this.toStringWithDepth(1)
-    override fun toStringWithDepth(n: Int): String = "${toSubscript(n)}[${this.left.toStringWithDepth(n+1)}, ${this.right.toStringWithDepth(n+1)}]"
 
-    override operator fun plus(other: SN): SNP = SNP(this, other).reduce() as SNP
+    override operator fun plus(other: SN): SNP = SNP(this, other).reduce()
 
     override fun addToLeftMost(value: Int): SN {
         return SNP(this.left.addToLeftMost(value), this.right)
@@ -70,19 +58,28 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
         return SNP(this.left, this.right.addToRightMost(value))
     }
 
-    override fun _explode(depth: Int): Pair<SN, Parts?> {
+    override fun explode(depth: Int): Pair<SN, Parts?> {
+        /* Basic idea:
+        Every explode call returns 1) The new SN to replace itself with and 2) The two parts that need to get absorbed
+        If this.left explodes, this.right absorbs (addToLeftMost) the right exploded part. The left exploded part is passed back to the parent in `Parts`
+        If the this.right explodes, this.left absorbs (addToRightMost) the left exploded part. The right exploded part is passed back to the parent in `Parts`
+        Then, the parent would place the received part based on whether it came from it's left or right child and so on
+         */
+
         // Check if left child explodes
-        val (newLeft, parts) = this.left._explode(depth + 1)
+        val (newLeft, parts) = this.left.explode(depth + 1)
         if (parts != null) {
             val (leftPart, rightPart) = parts
             return SNP(newLeft, this.right.addToLeftMost(rightPart)) to Parts(leftPart, 0)
         }
+
         // Check if left child explodes
-        val (newRight, parts2) = this.right._explode(depth + 1)
+        val (newRight, parts2) = this.right.explode(depth + 1)
         if (parts2 != null) {
             val (leftPart, rightPart) = parts2
             return SNP(this.left.addToRightMost(leftPart), newRight) to Parts(0, rightPart)
         }
+
         // Check if I explode
         if (depth >= 5) {
             // If depth >= 5 and my children didn't explode, they must be SNIs
@@ -92,12 +89,12 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
         return this to null
     }
 
-    override fun explode(): Pair<SN, Boolean> {
-        val (newSNP, parts) = this._explode(1)
-        return newSNP to (parts != null)
+    fun explode(): Pair<SNP, Boolean> {
+        val (newSNP, parts) = this.explode(1)
+        return newSNP as SNP to (parts != null)
     }
 
-    override fun split(): Pair<SN, Boolean> {
+    override fun split(): Pair<SNP, Boolean> {
         val (newLeft, split) = this.left.split()
         if (split) return SNP(newLeft, this.right) to true
         val (newRight, splitR) = this.right.split()
@@ -105,12 +102,10 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
         return this to false
     }
 
-    override fun reduce(): SN {
+    override fun reduce(): SNP {
         val (exploded, didExplode) = this.explode()
-//        println("e $exploded ${exploded.sum()}")
         if (didExplode) return exploded.reduce()
         val (split, didSplit) = exploded.split()
-//        println("s $split ${split.sum()}")
         if (didSplit) return split.reduce()
         return this
     }
