@@ -1,5 +1,5 @@
-import java.io.File
 import java.math.BigInteger
+import java.security.InvalidAlgorithmParameterException
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.*
@@ -21,7 +21,20 @@ fun main(args: Array<String>) {
 //    day14()
 //    day15()
 //    day16()
-    day17()
+//    day17()
+    day18()
+}
+
+typealias Line = List<Int>
+typealias Board = List<List<Int>>
+
+inline fun <K, reified V: Number> counter(c: Iterable<K>): Map<K, V> {
+    if (1 is V) {
+        return c.map {k -> k to c.count {it == k}}.toMap() as Map<K, V>
+    } else if (1.toLong() is V) {
+        return c.map {k -> k to c.count {it == k}.toLong()}.toMap() as Map<K, V>
+    }
+    else throw UnsupportedOperationException()
 }
 
 val day1 = sequence<Int> {
@@ -887,14 +900,95 @@ fun day17() {
 
 }
 
-inline fun <K, reified V: Number> counter(c: Iterable<K>): Map<K, V> {
-    if (1 is V) {
-        return c.map {k -> k to c.count {it == k}}.toMap() as Map<K, V>
-    } else if (1.toLong() is V) {
-        return c.map {k -> k to c.count {it == k}.toLong()}.toMap() as Map<K, V>
-    }
-    else throw UnsupportedOperationException()
-}
+fun day18() {
+    data class IPair(val left: Int, val right: Int)
 
-typealias Line = List<Int>
-typealias Board = List<List<Int>>
+    abstract class SN {
+        abstract fun addToLeftMost(value: Int): SN
+        abstract fun addToRightMost(value: Int): SN
+    }
+
+    data class SNI(val value: Int): SN() {
+        override fun toString(): String = this.value.toString()
+        override fun addToLeftMost(value: Int): SN {
+            return SNI(this.value + value)
+        }
+        override fun addToRightMost(value: Int): SN {
+            return SNI(this.value + value)
+        }
+    }
+    data class SNP(val left: SN, val right: SN): SN() {
+        override fun toString(): String = "[${this.left.toString()}, ${this.right.toString()}]"
+        operator fun plus(other: SN) = SNP(this, other)
+
+        fun toIpair(): IPair = IPair((this.left as SNI).value, (this.right as SNI).value)
+
+        override fun addToLeftMost(value: Int): SN {
+            return SNP(this.left.addToLeftMost(value), this.right)
+        }
+        override fun addToRightMost(value: Int): SN {
+            return SNP(this.left, this.right.addToRightMost(value))
+        }
+
+        fun _explode(depth: Int): Pair<SN, IPair?> {
+            if (depth == 5) return SNI(0) to this.toIpair()
+            if (this.left is SNP) {
+                val (newLeft, parts) = this.left._explode(depth + 1)
+                if (parts != null) {
+                    val (leftPart, rightPart) = parts
+                    return SNP(newLeft, this.right.addToLeftMost(rightPart)) to IPair(leftPart, 0)
+                }
+            }
+            if (this.right is SNP) {
+                val (newRight, parts) = this.right._explode(depth + 1)
+                if (parts != null) {
+                    val (leftPart, rightPart) = parts
+                    return SNP(this.left.addToRightMost(leftPart), newRight) to IPair(0, rightPart)
+                }
+            }
+            return this to null
+        }
+
+        fun explode(): Pair<SNP, Boolean> {
+            val (s, d) = this._explode(1)
+            return (s as SNP) to (d != null)
+        }
+
+        fun split(): Pair<SNP, Boolean> {TODO()}
+        fun reduce(): SN {
+            val (exploded, didExplode) = this.explode()
+            return if (didExplode) {
+                val (split, didSplit) = this.split()
+                if (didSplit) split.reduce() else exploded
+            } else this
+        }
+    }
+
+    fun parse(s: String, p: Int): Pair<SN, Int> {
+       if(s[p].isDigit()) return SNI(s[p].digitToInt()) to p+1
+        else if (s[p] == '[') {
+           val (left, pl) = parse(s, p+1)
+           assert(s[pl] == ',')
+           val (right, pr) = parse(s, pl+1)
+           assert(s[pr] == ']')
+           return SNP(left, right) to pr + 1
+       } else {
+           throw InvalidAlgorithmParameterException()
+       }
+    }
+    fun parse(s: String): SNP =  parse(s, 0).first as SNP
+
+    println("""[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]
+[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]
+[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]
+[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]
+[7,[5,[[3,8],[1,4]]]]
+[[2,[2,2]],[8,[8,1]]]
+[2,9]
+[1,[[[9,3],9],[[9,0],[0,7]]]]
+[[[5,[7,4]],7],1]
+[[[[4,2],2],6],[8,7]]""".split("\n").map(::parse).reduce(SNP::plus))
+
+    println((parse("""[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]""")).explode().first.explode().first)
+
+}
