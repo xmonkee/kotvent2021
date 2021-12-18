@@ -1,4 +1,5 @@
 import kotlin.math.ceil
+import kotlin.math.exp
 import kotlin.math.floor
 
 abstract class SN { // SnailFishNumber
@@ -6,8 +7,11 @@ abstract class SN { // SnailFishNumber
     abstract fun addToRightMost(value: Int): SN
     abstract fun split(): Pair<SN, Boolean>
     abstract fun explode(): Pair<SN, Boolean>
+    abstract fun _explode(depth: Int): Pair<SN, Parts?>
     abstract fun reduce(): SN
     abstract fun magnitude(): Int
+    abstract fun toStringWithDepth(n: Int): String
+    abstract fun sum(): Int
 }
 
 data class SNI(val value: Int): SN() { // SN that holds an Int only
@@ -29,6 +33,10 @@ data class SNI(val value: Int): SN() { // SN that holds an Int only
         return this to false
     }
 
+    override fun _explode(depth: Int): Pair<SN, Parts?> {
+        return this to null
+    }
+
     override fun reduce(): SN {
         return this
     }
@@ -37,12 +45,21 @@ data class SNI(val value: Int): SN() { // SN that holds an Int only
         return this.value
     }
 
+    override fun toStringWithDepth(n: Int): String = this.value.toString()
+    override fun sum(): Int {
+        return this.value
+    }
+
 }
 
 data class Parts(val left: Int, val right: Int)
 
+fun toSubscript(n: Int) = if(n >= 5) Character.toChars('₀'.code + n)[0] else ""
+
 data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
     override fun toString(): String = "[${this.left.toString()}, ${this.right.toString()}]"
+//    override fun toString(): String = this.toStringWithDepth(1)
+    override fun toStringWithDepth(n: Int): String = "${toSubscript(n)}[${this.left.toStringWithDepth(n+1)}, ${this.right.toStringWithDepth(n+1)}]"
     operator fun plus(other: SN) = SNP(this, other)
 
     override fun addToLeftMost(value: Int): SN {
@@ -52,24 +69,25 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
         return SNP(this.left, this.right.addToRightMost(value))
     }
 
-    fun _explode(depth: Int): Pair<SN, Parts?> {
-        if (depth == 5) {
+    override fun _explode(depth: Int): Pair<SN, Parts?> {
+        // Check if left child explodes
+        val (newLeft, parts) = this.left._explode(depth + 1)
+        if (parts != null) {
+            val (leftPart, rightPart) = parts
+            return SNP(newLeft, this.right.addToLeftMost(rightPart)) to Parts(leftPart, 0)
+        }
+        // Check if left child explodes
+        val (newRight, parts2) = this.right._explode(depth + 1)
+        if (parts2 != null) {
+            val (leftPart, rightPart) = parts2
+            return SNP(this.left.addToRightMost(leftPart), newRight) to Parts(0, rightPart)
+        }
+        // Check if I explode
+        if (depth >= 5) {
+            // If depth >= 5 and my children didn't explode, they must be SNIs
             return SNI(0) to Parts((this.left as SNI).value, (this.right as SNI).value)
         }
-        if (this.left is SNP) {
-            val (newLeft, parts) = this.left._explode(depth + 1)
-            if (parts != null) {
-                val (leftPart, rightPart) = parts
-                return SNP(newLeft, this.right.addToLeftMost(rightPart)) to Parts(leftPart, 0)
-            }
-        }
-        if (this.right is SNP) {
-            val (newRight, parts) = this.right._explode(depth + 1)
-            if (parts != null) {
-                val (leftPart, rightPart) = parts
-                return SNP(this.left.addToRightMost(leftPart), newRight) to Parts(0, rightPart)
-            }
-        }
+        // Nothing explodes
         return this to null
     }
 
@@ -88,9 +106,15 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
 
     override fun reduce(): SN {
         val (exploded, didExplode) = this.explode()
+//        println("e $exploded ${exploded.sum()}")
+        if (didExplode) return exploded.reduce()
         val (split, didSplit) = exploded.split()
-        if (didExplode || didSplit) return split.reduce()
-        else return this
+//        println("s $split ${split.sum()}")
+        if (didSplit) return split.reduce()
+        return this
+    }
+    override fun sum(): Int {
+        return left.sum() + right.sum()
     }
 
     override fun magnitude(): Int {

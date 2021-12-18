@@ -916,8 +916,38 @@ fun day18() {
     }
     fun parse(s: String): SNP =  parse(s, 0).first as SNP
 
+//    println(parse("[[[[[9,8],1],2],3],4]").explode().first)
+//    println(parse("[7,[6,[5,[4,[3,2]]]]]").explode().first)
+//    println(parse("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]").explode().first)
+//    println(parse("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]").explode().first)
 
-    val test = """[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+    fun addUp(s: String) {
+        val t = s.trimIndent().split("\n").map(::parse)
+        var acc = t[0]
+//        println("  $acc ${acc.sum()}")
+        for (snp in t.drop(1)) {
+//            println("+ $snp ${snp.sum()}")
+            acc += snp
+//            println("= $acc ${acc.sum()}")
+            acc = acc.reduce() as SNP
+//            println("= $acc ${acc.sum()}")
+//            println()
+        }
+        println(acc.magnitude())
+    }
+//    addUp("[[[[4,3],4],4],[7,[[8,4],9]]]\n[1,1]")
+//    addUp("[1,1]\n[2,2]\n[3,3]\n[4,4]\n[5,5]\n[6,6]")
+//    addUp("""[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]
+//[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]
+//[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]
+//[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]
+//[7,[5,[[3,8],[1,4]]]]
+//[[2,[2,2]],[8,[8,1]]]
+//[2,9]
+//[1,[[[9,3],9],[[9,0],[0,7]]]]
+//[[[5,[7,4]],7],1]
+//[[[[4,2],2],6],[8,7]]""")
+    val example = """[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
 [[[5,[2,8]],4],[5,[[9,9],0]]]
 [6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
 [[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
@@ -927,17 +957,37 @@ fun day18() {
 [[9,3],[[9,9],[6,[4,9]]]]
 [[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
 [[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]"""
-        .split("\n")
-        .map(::parse)
-    var acc = test[0]
-    println(acc)
-    for (snp in test.drop(1)) {
-        println("to add: $snp")
-        acc += snp
-        println("added: $acc")
-        acc = acc.reduce() as SNP
-        println("reduced: $acc")
-    }
+    // part 1
+    addUp(example)
+//    addUp(Utils.getRawInput(18).trim())
+    // part 2
 
+    fun getMaxMagnitude(s: String) {
+        val inps = s.split("\n").map(::parse)
+        val len = inps.size
+        var maxMag = 0
+        var maxI = 0
+        var maxJ = 0
+        for(i in 0 until (len-1)) {
+            for(j in (i+1) until len) {
+                val s1 = (inps[i] + inps[j]).magnitude()
+                val s2 = (inps[j] + inps[i]).magnitude()
+                if (s1 > maxMag) {
+                    maxMag = s1
+                    maxI = i
+                    maxJ = j
+                }
+                if (s2 > maxMag) {
+                    maxMag = s2
+                    maxI = j
+                    maxJ = i
+                }
+            }
+        }
+        println(maxMag)
+        println(inps[maxI])
+        println(inps[maxJ])
+    }
+    getMaxMagnitude(example)
 
 }
