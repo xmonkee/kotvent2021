@@ -1,5 +1,4 @@
 import kotlin.math.ceil
-import kotlin.math.exp
 import kotlin.math.floor
 
 abstract class SN { // SnailFishNumber
@@ -9,9 +8,9 @@ abstract class SN { // SnailFishNumber
     abstract fun explode(): Pair<SN, Boolean>
     abstract fun _explode(depth: Int): Pair<SN, Parts?>
     abstract fun reduce(): SN
+    abstract operator fun plus(other: SN): SN
     abstract fun magnitude(): Int
     abstract fun toStringWithDepth(n: Int): String
-    abstract fun sum(): Int
 }
 
 data class SNI(val value: Int): SN() { // SN that holds an Int only
@@ -41,14 +40,15 @@ data class SNI(val value: Int): SN() { // SN that holds an Int only
         return this
     }
 
+    override fun plus(other: SN): SN {
+        TODO("Not yet implemented")
+    }
+
     override fun magnitude(): Int {
         return this.value
     }
 
     override fun toStringWithDepth(n: Int): String = this.value.toString()
-    override fun sum(): Int {
-        return this.value
-    }
 
 }
 
@@ -60,7 +60,8 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
     override fun toString(): String = "[${this.left.toString()}, ${this.right.toString()}]"
 //    override fun toString(): String = this.toStringWithDepth(1)
     override fun toStringWithDepth(n: Int): String = "${toSubscript(n)}[${this.left.toStringWithDepth(n+1)}, ${this.right.toStringWithDepth(n+1)}]"
-    operator fun plus(other: SN) = SNP(this, other)
+
+    override operator fun plus(other: SN): SNP = SNP(this, other).reduce() as SNP
 
     override fun addToLeftMost(value: Int): SN {
         return SNP(this.left.addToLeftMost(value), this.right)
@@ -112,9 +113,6 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
 //        println("s $split ${split.sum()}")
         if (didSplit) return split.reduce()
         return this
-    }
-    override fun sum(): Int {
-        return left.sum() + right.sum()
     }
 
     override fun magnitude(): Int {
