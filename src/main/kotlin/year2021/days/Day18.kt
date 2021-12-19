@@ -1,7 +1,9 @@
+package year2021.days
+
+import Utils.cross
 import java.security.InvalidAlgorithmParameterException
 import kotlin.math.ceil
 import kotlin.math.floor
-
 
 abstract class SN { // SnailFishNumber
     abstract fun addToLeftMost(value: Int): SN
