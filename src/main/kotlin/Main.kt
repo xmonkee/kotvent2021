@@ -911,27 +911,3 @@ fun day17() {
 
 }
 
-fun day18() {
-
-    fun parse(s: String, p: Int): Pair<SN, Int> {
-        if(s[p].isDigit()) return SNI(s[p].digitToInt()) to p+1
-        else if (s[p] == '[') {
-            val (left, pl) = parse(s, p+1)
-            assert(s[pl] == ',')
-            val (right, pr) = parse(s, pl+1)
-            assert(s[pr] == ']')
-            return SNP(left, right) to pr + 1
-        } else {
-            throw InvalidAlgorithmParameterException()
-        }
-    }
-    fun parse(s: String): SNP =  parse(s, 0).first as SNP
-
-    val inp = Utils.getRawInput(18).trim().split("\n").map(::parse)
-    // part 1
-    println(inp.reduce(SN::plus).magnitude())
-
-    // part 2
-    println(inp.cross(inp).filter{(x, y) -> x != y}.maxOf{(x, y) -> (x + y).magnitude()})
-}
-

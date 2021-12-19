@@ -1,5 +1,7 @@
+import java.security.InvalidAlgorithmParameterException
 import kotlin.math.ceil
 import kotlin.math.floor
+
 
 abstract class SN { // SnailFishNumber
     abstract fun addToLeftMost(value: Int): SN
@@ -11,18 +13,20 @@ abstract class SN { // SnailFishNumber
     abstract fun magnitude(): Int
 }
 
-data class SNI(val value: Int): SN() { // SN that holds an Int only
+data class SNI(val value: Int) : SN() { // SN that holds an Int only
     override fun toString(): String = this.value.toString()
     override fun addToLeftMost(value: Int): SN {
         return SNI(this.value + value)
     }
+
     override fun addToRightMost(value: Int): SN {
         return SNI(this.value + value)
     }
+
     override fun split(): Pair<SN, Boolean> {
         if (this.value < 10) return this to false
-        val left = floor(this.value.toDouble()/2).toInt()
-        val right = ceil(this.value.toDouble()/2).toInt()
+        val left = floor(this.value.toDouble() / 2).toInt()
+        val right = ceil(this.value.toDouble() / 2).toInt()
         return SNP(SNI(left), SNI(right)) to true
     }
 
@@ -46,7 +50,7 @@ data class SNI(val value: Int): SN() { // SN that holds an Int only
 
 data class Parts(val left: Int, val right: Int)
 
-data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
+data class SNP(val left: SN, val right: SN) : SN() { // SN that holds a pair
     override fun toString(): String = "[${this.left.toString()}, ${this.right.toString()}]"
 
     override operator fun plus(other: SN): SNP = SNP(this, other).reduce()
@@ -54,6 +58,7 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
     override fun addToLeftMost(value: Int): SN {
         return SNP(this.left.addToLeftMost(value), this.right)
     }
+
     override fun addToRightMost(value: Int): SN {
         return SNP(this.left, this.right.addToRightMost(value))
     }
@@ -61,6 +66,7 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
     override fun explode(depth: Int): Pair<SN, Parts?> {
         /* Basic idea:
         Every explode call returns 1) The new SN to replace itself with and 2) The two parts that need to get absorbed
+        In every call:
         If this.left explodes, this.right absorbs (addToLeftMost) the right exploded part. The left exploded part is passed back to the parent in `Parts`
         If the this.right explodes, this.left absorbs (addToRightMost) the left exploded part. The right exploded part is passed back to the parent in `Parts`
         Then, the parent would place the received part based on whether it came from it's left or right child and so on
@@ -111,7 +117,32 @@ data class SNP(val left: SN, val right: SN): SN() { // SN that holds a pair
     }
 
     override fun magnitude(): Int {
-        return left.magnitude()*3 + right.magnitude()*2
+        return left.magnitude() * 3 + right.magnitude() * 2
     }
+}
+
+fun day18() {
+
+    fun parse(s: String, p: Int): Pair<SN, Int> {
+        if (s[p].isDigit()) return SNI(s[p].digitToInt()) to p + 1
+        else if (s[p] == '[') {
+            val (left, pl) = parse(s, p + 1)
+            assert(s[pl] == ',')
+            val (right, pr) = parse(s, pl + 1)
+            assert(s[pr] == ']')
+            return SNP(left, right) to pr + 1
+        } else {
+            throw InvalidAlgorithmParameterException()
+        }
+    }
+
+    fun parse(s: String): SNP = parse(s, 0).first as SNP
+
+    val inp = Utils.getRawInput(18).trim().split("\n").map(::parse)
+    // part 1
+    println(inp.reduce { a, b -> a + b }.magnitude())
+
+    // part 2
+    println(inp.cross(inp).filter { (x, y) -> x != y }.maxOf { (x, y) -> (x + y).magnitude() })
 }
 
