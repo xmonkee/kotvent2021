@@ -46,4 +46,12 @@ object Utils {
         }.toList()
     }
 
+    fun <T> allDirectionalPairs(l: List<T>) = sequence {
+        for (i in 0 until l.size - 1)
+            for (j in i + 1 until l.size) {
+                yield(l[i] to l[j]); yield(l[j] to l[i])
+            }
+    }.toList()
+
+
 }
