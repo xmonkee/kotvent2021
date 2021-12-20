@@ -1,5 +1,6 @@
 package year2021.days
 
+import java.lang.Math.abs
 import java.security.InvalidAlgorithmParameterException
 
 val input = """--- scanner 0 ---
@@ -164,21 +165,8 @@ data class Point(val x: Int, val y: Int, val z: Int) {
     operator fun plus(other: Point) = Point(x+other.x, y+other.y, z+other.z)
     fun negative() = Point(-x, -y, -z)
     operator fun minus(o: Point) = this + o.negative()
-    fun cross(o: Point) = Point(this.y*o.z - this.z-o.y, -(this.x*o.z - this.z*o.x), this.x*o.y - this.y*o.x)
     override fun toString() = "[$x $y $z]"
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (javaClass != o?.javaClass) return false
-        o as Point
-        return o.x == x && o.y == y && o.z == z
-    }
-
-    override fun hashCode(): Int {
-        var result = x
-        result = 31 * result + y
-        result = 31 * result + z
-        return result
-    }
+    fun manhattan() = abs(x) + abs(y) + abs(z)
 }
 
 fun day19() {
@@ -194,12 +182,8 @@ fun day19() {
         return s2p
     }
 
-    val s2p = parseInput(input)
-    fun <T> allNonDirectionalPairs(l: List<T>) = sequence {
-        for (i in 0 until l.size - 1)
-            for (j in i + 1 until l.size)
-                yield(l[i] to l[j])
-    }.toList()
+//    val s2p = parseInput(input)
+    val s2p = parseInput(Utils.getRawInput(19).trim())
 
     fun <T> allDirectionalPairs(l: List<T>) = sequence {
         for (i in 0 until l.size - 1)
@@ -208,7 +192,7 @@ fun day19() {
             }
     }.toList()
 
-    // 12 common beacons = 66 pairs where (p1 - p2) under some transform will have a match in another scanner
+    // 12 common beacons = 66 [due to n(n-1)/2 ] pairs where (p1 - p2) under some transform will have a match in another scanner
     val scannersToPairs = s2p.map { (k, v) -> k to allDirectionalPairs(v) }.toMap()
     val scannersToPairDiffs = scannersToPairs.map { (k, v) -> k to v.map { (p1, p2) -> p1 - p2 } }.toMap()
 
@@ -221,23 +205,23 @@ fun day19() {
     }
 
     val scannerPairs = allDirectionalPairs(s2p.keys.toList())
-    val scannerPairsToTransforms =
+    val scannerPairsToTransforms = // (s1, s2) to t where s1 orientation is s2 transformed under t
         scannerPairs.map { (s1, s2) -> s1 to s2 to findTransformThatGives12CommonBeacons(s1, s2) }.toMap()
             .filter { (k, v) -> v != null }
     println(scannerPairsToTransforms)
 
-    fun findTransformRelativeTo0(i: Int): Point {
-        if (0 to i in scannerPairsToTransforms) return scannerPairsToTransforms[0 to i]!!
-        for((spair, t1) in scannerPairsToTransforms) {
-            if (spair.second == i) {
-                val t2 = findTransformRelativeTo0(spair.first)
-                return t1!!.transform(t2)
+    val scannerToAbsoluteTransform = mutableMapOf<Int, Point>(0 to Point(1, 2, 3)) // s2 to s0 == (s2 to s1).(s1 to s0)
+    while(scannerToAbsoluteTransform.size < s2p.size) {
+        for ((pair, t2to1) in scannerPairsToTransforms) {
+            val (s1, s2) = pair
+            if (s2 in scannerToAbsoluteTransform) continue
+            if (s1 in scannerToAbsoluteTransform) {
+                val t1to0 = scannerToAbsoluteTransform[s1]!!
+                scannerToAbsoluteTransform[s2] = t2to1!!.transform(t1to0)
             }
         }
-        throw InvalidAlgorithmParameterException()
     }
 
-    val scannerToAbsoluteTransform = s2p.keys.drop(1).map { it to findTransformRelativeTo0(it) }.toMap()
     println(scannerToAbsoluteTransform)
 
     val scannerPairToPointMap = scannerPairsToTransforms.map { (sp, t) ->
@@ -271,20 +255,17 @@ fun day19() {
     val scannerPairToRelativeOrigin = scannerPairsToTransforms.keys.map{spair -> spair to getS2OriginWRTS1(spair)}.toMap()
     println(scannerPairToRelativeOrigin)
 
-    fun getScannerOriginWRT0(i: Int): Point {
-        if (0 to i in scannerPairToRelativeOrigin) return scannerPairToRelativeOrigin[0 to i]!!
-        for((spair, s2_from_s1) in scannerPairToRelativeOrigin) {
-            val (s1, s2) = spair
-            if (s2 == i) {
-                val s1_from_s0 = getScannerOriginWRT0(s1)
-                val s2_from_s0 = s1_from_s0 + s2_from_s1.transform(scannerToAbsoluteTransform[s1]!!)
-                return s2_from_s0
+    val scannerToAbsoluteOrigin = mutableMapOf<Int, Point>(0 to Point(0, 0, 0))
+    while(scannerToAbsoluteOrigin.size < s2p.size) {
+        for ((pair, o2to1) in scannerPairToRelativeOrigin) {
+            val (s1, s2) = pair
+            if (s2 in scannerToAbsoluteOrigin) continue
+            if (s1 in scannerToAbsoluteOrigin) {
+                val o1to0 = scannerToAbsoluteOrigin[s1]!!
+                scannerToAbsoluteOrigin[s2] = o1to0 + o2to1!!.transform(scannerToAbsoluteTransform[s1]!!)
             }
         }
-        throw InvalidAlgorithmParameterException()
     }
-
-    val scannerToAbsoluteOrigin = s2p.keys.drop(1).map { it to getScannerOriginWRT0(it) }.toMap()
     println(scannerToAbsoluteOrigin)
 
     fun mapAllBeaconsRelativeTo0(s: Int): List<Point> {
@@ -293,6 +274,11 @@ fun day19() {
         }
     }
 
+    // part 1
     val allBeaconsWRT0 = s2p[0]!! + s2p.keys.drop(1).flatMap { mapAllBeaconsRelativeTo0(it) }
     println(allBeaconsWRT0.toSet().size)
+
+    // part 2
+    val maxManhattan = scannerPairs.maxOf { (s1, s2) -> (scannerToAbsoluteOrigin[s1]!! - scannerToAbsoluteOrigin[s2]!!).manhattan() }
+    println(maxManhattan)
 }
