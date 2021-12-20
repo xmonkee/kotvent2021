@@ -248,7 +248,7 @@ fun day19() {
         val s2b = scannerPairToPointMap[spair]!![s1b]!!
         val transform = scannerPairsToTransforms[spair]!!
         val s2bt = s2b.transform(transform)
-        val s2s1 = s1b - s2bt // s1 wrt to s0 (ladies and gentlemen, we got him)
+        val s2s1 = s1b - s2bt
         return s2s1
     }
 
