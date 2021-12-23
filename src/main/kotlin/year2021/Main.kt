@@ -3,7 +3,7 @@ package year2021
 import year2021.days.*
 
 fun main(args: Array<String>) {
-   day21()
+   day22()
 }
 
 typealias Line = List<Int>
