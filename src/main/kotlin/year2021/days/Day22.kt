@@ -97,16 +97,13 @@ fun day22() {
 
         data class Cube(val x1: Int, val x2: Int, val y1: Int, val y2: Int, val z1: Int, val z2: Int) {
             fun intersect(other: Cube): Cube? {
+                // xa, ya, za come "before" xb, yb, zb
                 val (xa, xb) = if (x1 <= other.x1) this to other else other to this
                 val (ya, yb) = if (y1 <= other.y1) this to other else other to this
                 val (za, zb) = if (z1 <= other.z1) this to other else other to this
-                if (xa.x2 < xb.x1) return null
-                if (ya.y2 < yb.y1) return null
-                if (za.z2 < zb.z1) return null
-                val x1 = xb.x1; val x2 = min(xa.x2, xb.x2)
-                val y1 = yb.y1; val y2 = min(ya.y2, yb.y2)
-                val z1 = zb.z1; val z2 = min(za.z2, zb.z2)
-                return Cube(x1, x2, y1, y2, z1, z2)
+                // if the "before" Cube ends before the "after" cube beings, there is no overlap
+                if (xa.x2 < xb.x1 || ya.y2 < yb.y1 || za.z2 < zb.z1) return null
+                return Cube(xb.x1, min(xa.x2, xb.x2), yb.y1, min(ya.y2, yb.y2), zb.z1, min(za.z2, zb.z2))
             }
         }
         data class ValueCube(val cube: Cube, val value: Long)
@@ -116,7 +113,7 @@ fun day22() {
             if (value == 1L) newCubes.add(ValueCube(new, value))
             for (vcube in this) {
                 val intersection = vcube.cube.intersect(new)
-                // neutralize everything in this location from before
+                // neutralize everything in this overlap from before
                 if(intersection != null) newCubes.add(ValueCube(intersection, -vcube.value))
             }
             return this + newCubes
@@ -124,7 +121,6 @@ fun day22() {
 
 //        val inp = inp22.split("\n").map(::parseLine)
         val inp = (Utils.getRawInput(22).trim()).split("\n").map(::parseLine)
-
         fun order(left: Int, right: Int) = min(left, right)  to max(left, right)
         var allCubes = listOf<ValueCube>()
         for ((pos, coords) in inp) {
